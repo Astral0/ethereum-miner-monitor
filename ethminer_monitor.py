@@ -181,11 +181,15 @@ import time
 import os
 from statistics import mean
 from email.mime.text import MIMEText
+import smtplib
+from email.message import EmailMessage
+
 import configparser
+import pprint
 
 __version__ = '1.0.6'
 
-PIDFILE = "/var/run/ethminer_monitor.pid"
+PIDFILE = "/var/run/ethminer/ethminer_monitor.pid"
 
 class MinerMonitor(object):
 
@@ -236,7 +240,7 @@ class MinerMonitor(object):
 
         # integer config values
         integer_values = ['MINER_UTILIZATION_CHECK_LOOP', 'MINER_UTILIZATION_CHECK_DELAY',
-                          'MINER_PROCESS_CHECK_LOOP', 'MINER_PROCESS_CHECK_DELAY', 'MINER_UTILIZATION_MIN_LEVEL']
+                          'MINER_PROCESS_CHECK_LOOP', 'MINER_PROCESS_CHECK_DELAY', 'MINER_UTILIZATION_MIN_LEVEL', 'EMAIL_LOG_NUMBER_LINES']
         # boolean config values
         boolean_values = ['MINER_PROCESS_RESTART_ENABLED', 'MINER_SYSTEM_REBOOT_ENABLED', 'EMAIL_NOTIFICATION']
 
@@ -259,6 +263,8 @@ class MinerMonitor(object):
         if not self.cfg.get('MINER_START_CMD', None):
             raise ValueError(
                 "The 'MINER_START_CMD' configuration is required. Please update your config.ini file.")
+
+        #pprint.pprint(self.cfg)
 
     #
     # check linux system
@@ -452,12 +458,30 @@ class MinerMonitor(object):
 
         :return: null
         """
-        msg = MIMEText(self.cfg['EMAIL_MESSAGE'])
-        msg["From"] = self.cfg['EMAIL_SENDER']
-        msg["To"] = self.cfg['EMAIL_RECIPIENT']
-        msg["Subject"] = self.cfg['EMAIL_SUBJECT']
-        p = subprocess.Popen(["/usr/sbin/sendmail", "-t", "-oi"], stdin=subprocess.PIPE, universal_newlines=True)
-        p.communicate(msg.as_string())
+
+        # Open the last XX lines of log file to be sent by mail.
+        msg = EmailMessage()
+        try:
+            with open(self.cfg['MINER_LOG_FILE'], 'r') as fp:
+                msg.set_content(' '.join(fp.readlines()[self.cfg['EMAIL_LOG_NUMBER_LINES']:]) )
+        except:
+            msg.set_content( self.cfg['EMAIL_MESSAGE'] )
+
+        msg['Subject'] = self.cfg['EMAIL_SUBJECT']
+        msg['From'] = self.cfg['EMAIL_SENDER']
+        msg['To'] = self.cfg['EMAIL_RECIPIENT']
+
+        # Send the message via our own SMTP server.
+        username = self.cfg['EMAIL_SMTP_USERNAME']
+        password = self.cfg['EMAIL_SMTP_PASSWORD']
+        smtphost = self.cfg['EMAIL_SMTP_SERVER'] + ':' + self.cfg['EMAIL_SMTP_PORT']
+        s = smtplib.SMTP(smtphost)
+        s.login(username, password)
+        s.send_message(msg)
+        #print('aaa')
+        s.quit()
+
+
 
     #
     # restart
@@ -468,7 +492,8 @@ class MinerMonitor(object):
 
         :return: null
         """
-        command = "/usr/bin/sudo /sbin/shutdown -r now"
+        command = self.cfg['CMD_HARDWARE_REBOOT']
+        #command = "/usr/bin/sudo /sbin/shutdown -r now"
         process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
         output = process.communicate()[0]
 
@@ -512,7 +537,7 @@ class MinerMonitor(object):
                         self.logger.info("Run sh command: {0}".format(self.cfg['MINER_START_CMD']))
                         self.run_shell_cmd(self.cfg['MINER_START_CMD'], devnull=True)
 
-                        # wait 5sec after starting
+                        # wait 5 sec after starting
                         time.sleep(5)
 
                         # show current state
@@ -745,6 +770,8 @@ def main():
 
     with open(PIDFILE, 'a') as out:
         out.write(pid)
+
+    #miner_monitor.send_notification()
 
     try:
 

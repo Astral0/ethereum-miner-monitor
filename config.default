@@ -14,8 +14,18 @@ MINER_UTILIZATION_MIN_LEVEL = 10
 MINER_PROCESS_CHECK_LOOP = 5
 MINER_PROCESS_CHECK_DELAY = 30
 
+MINER_LOG_FILE = /var/log/ethminer/ethminer.stderr
+
 EMAIL_NOTIFICATION = False
 EMAIL_MESSAGE = Your server was restarted by miner-monitor.
 EMAIL_SENDER = yoursender@yourdomain.com
 EMAIL_RECIPIENT = yourrecipient@yourdomain.com
 EMAIL_SUBJECT = Server reboot notification
+EMAIL_SMTP_SERVER = mail.alneos.fr
+EMAIL_SMTP_PORT = 5025
+EMAIL_SMTP_USERNAME = sb@alneos.fr
+EMAIL_SMTP_PASSWORD = aqwzsxedc00
+
+CMD_HARDWARE_REBOOT = /usr/bin/sudo /sbin/shutdown -r now
+;CMD_HARDWARE_REBOOT = /.../bin/reboot.sh
+
