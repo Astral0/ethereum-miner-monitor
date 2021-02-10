@@ -189,7 +189,7 @@ import pprint
 
 __version__ = '1.0.6'
 
-PIDFILE = "/var/run/ethminer/ethminer_monitor.pid"
+PIDFILE = "/var/run/ethminer_monitor.pid"
 
 class MinerMonitor(object):
 
