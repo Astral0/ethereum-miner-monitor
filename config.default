@@ -14,7 +14,7 @@ MINER_UTILIZATION_MIN_LEVEL = 10
 MINER_PROCESS_CHECK_LOOP = 5
 MINER_PROCESS_CHECK_DELAY = 30
 
-MINER_LOG_FILE = /var/log/miner/miner.log
+MINER_LOG_FILE = /var/log/ethminer_monitor/monitor.log
 
 EMAIL_NOTIFICATION = False
 EMAIL_MESSAGE = Your server was restarted by miner-monitor.

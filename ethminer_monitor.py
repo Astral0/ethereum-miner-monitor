@@ -328,8 +328,24 @@ class MinerMonitor(object):
                     output = output.strip().decode('utf-8')
                 except:
                     pass
-            except subprocess.CalledProcessError:
-                # self.logger.error("Command failed: {0}".format(shell_cmd))
+            except subprocess.CalledProcessError as exc:
+                self.logger.error("Command failed: {0}".format(shell_cmd))
+                self.logger.error("STDERR: {0}".format(exc.output))
+                if str(exc.output).find('Reboot the system to recover this GPU') != -1:
+                    print('reboot!')
+                    # start reboot process if enabled
+                    if self.cfg['MINER_SYSTEM_REBOOT_ENABLED']:
+                        # send email notify
+                        if self.cfg['EMAIL_NOTIFICATION'] == True:
+                            self.send_notification(subject=' - Reboot the system!', message=str(exc.output))
+
+                        # system reboot
+                        self.restart()
+                    else:
+                        # show current state
+                        self.logger.warning("System REBOOT is not enabled!")
+
+
                 pass
             except subprocess.TimeoutExpired:
                 self.logger.error("Timeout for command: {0}".format(shell_cmd))
@@ -410,7 +426,8 @@ class MinerMonitor(object):
             gpu_utilization_list = []
             try:
                 gpu_utilization_list = output.split('\n')
-            except:
+            except Exception as e:
+                self.logger.warning("NVidia utilization query error. {0}".format(e))
                 pass
 
         elif gpus_type == 'amd':
@@ -452,7 +469,7 @@ class MinerMonitor(object):
     #
     # send email
     # --------------------------------------------------------
-    def send_notification(self):
+    def send_notification(self, subject="", message=""):
         """
         Try to send email notification when server reboot initiated.
 
@@ -463,11 +480,11 @@ class MinerMonitor(object):
         msg = EmailMessage()
         try:
             with open(self.cfg['MINER_LOG_FILE'], 'r') as fp:
-                msg.set_content(' '.join(fp.readlines()[self.cfg['EMAIL_LOG_NUMBER_LINES']:]) )
+                msg.set_content(' '.join(fp.readlines()[-self.cfg['EMAIL_LOG_NUMBER_LINES']:]) )
         except:
             msg.set_content( self.cfg['EMAIL_MESSAGE'] )
 
-        msg['Subject'] = self.cfg['EMAIL_SUBJECT']
+        msg['Subject'] = self.cfg['EMAIL_SUBJECT'] + subject
         msg['From'] = self.cfg['EMAIL_SENDER']
         msg['To'] = self.cfg['EMAIL_RECIPIENT']
 
@@ -479,6 +496,7 @@ class MinerMonitor(object):
         s.login(username, password)
         s.send_message(msg)
         #print('aaa')
+        self.logger.info("Email sent !")
         s.quit()
 
 
@@ -492,6 +510,7 @@ class MinerMonitor(object):
 
         :return: null
         """
+        time.sleep(5)
         command = self.cfg['CMD_HARDWARE_REBOOT']
         #command = "/usr/bin/sudo /sbin/shutdown -r now"
         process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
