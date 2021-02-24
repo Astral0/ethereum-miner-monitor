@@ -18,10 +18,22 @@ set +e
 
 for i in $(seq 0 $nb); do
 
-    nvidia-smi -i $i -pl 100
+    # Type of chipset
+    t=$(nvidia-smi -i $i --query-gpu=gpu_name --format=csv,noheader)
+    if [ "$t" = "GeForce GTX 1070" ]; then
+        puissance=100
+    elif [ "$t" = "GeForce GTX 1070 Ti" ]; then
+        puissance=100
+    elif [ "$t" = "GeForce RTX 3070" ]; then
+        puissance=115
+    else
+        puissance=100
+    fi
+
+    nvidia-smi -i $i -pl $puissance
     iret=$?
     if [ ! "x${iret}" = "x0" ]; then
-        nvidia-smi -i $i -pl 115
+        nvidia-smi -i $i -pl 120
     fi
 done
 
